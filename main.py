@@ -3,31 +3,7 @@ import sys
 from lib import *
 
 
-def GOST_28147_89_GUM(text, key, keys, mode):
-    result = []
-
-    iv = 0x71EF0B1F3BE0394F
-    iv = GOST_28147_89(iv, key, "e")
-
-    C1 = 0x1010101
-    C2 = 0x1010104
-
-    N4 = iv >> 32 & 0xFFFFFFFF
-    N3 = iv & 0xFFFFFFFF
-    for t in text:
-        N4 = (N4 + C2) & 0xFFFFFFFF
-        N3 = ((N3 + C1 - 1) % 0xFFFFFFFF) + 1
-
-        N1 = N3
-        N2 = N4
-
-        N = (N2 << 32) | N1
-        gamma = GOST_28147_89(N, key, "e")
-        result.append(t ^ gamma)
-    return join_64bits(result)
-
-
-def GOST_28147_89(text_int, key, mode):
+def GOST_28147_89(text_int, key, mode, r = "s"):
     temp = 0
     print(((bin(text_int))))
 
@@ -48,18 +24,50 @@ def GOST_28147_89(text_int, key, mode):
     keys = gen_key(key, mode)
 
     final_result = []
+    sec_point = False
+    final_imit = 0
     for i in range(len(text_int)):
         left_subblock = text_int[i] >> 32
         right_subblock = text_int[i] & 0xFFFFFFFF
-        for i in range(32):
+        if r == "s":
+            for i in range(32):
+                if mode == "e":
+                    a =  function(right_subblock, keys[i])
+                    left_subblock, right_subblock = right_subblock,  function(right_subblock, keys[i]) ^ left_subblock
+                else:
+                    left_subblock, right_subblock = right_subblock ^ function(left_subblock, keys[i]), left_subblock
+
+            Tsh = ((left_subblock << 32) | right_subblock)
+            final_result.append(Tsh)
+        else:
+            if i == 0:
+                prev = 0
+
+                for ii in range(16):
+                    if mode == "e":
+                        left_subblock, right_subblock = right_subblock, function(right_subblock,
+                                                                                 keys[ii]) ^ left_subblock
+                    else:
+                        left_subblock, right_subblock = right_subblock ^ function(left_subblock,
+                                                                                  keys[ii]), left_subblock
+                Tsh = ((left_subblock << 32) | right_subblock)
+                final_imit = prev ^ Tsh
+            final_imit = final_imit ^ text_int[i]
+
+    if r != "s":
+        left_subblock = final_imit >> 32
+        right_subblock = final_imit & 0xFFFFFFFF
+        for i in range(16):
             if mode == "e":
-                a =  function(right_subblock, keys[i])
-                left_subblock, right_subblock = right_subblock,  function(right_subblock, keys[i]) ^ left_subblock
+                left_subblock, right_subblock = right_subblock, function(right_subblock,
+                                                                         keys[i]) ^ left_subblock
             else:
                 left_subblock, right_subblock = right_subblock ^ function(left_subblock, keys[i]), left_subblock
 
-        Tsh = ((left_subblock << 32) | right_subblock)
-        final_result.append(Tsh)
+            Tsh = ((left_subblock << 32) | right_subblock)
+            len_of_bin=len(str(bin(Tsh)))-2
+            return Tsh >> len_of_bin -32
+
     return join_64bits(final_result)
 
 
@@ -70,7 +78,7 @@ def encrypt_file(file_name, encrypted_file_name, key):
     with open(encrypted_file_name, 'w', encoding='utf-8') as write_file:
         for line in lines:
             line_to_encrypt = int(utf8ToHexBytes(line), 16)
-            crypted_line = str(GOST_28147_89(line_to_encrypt, key, "e"))
+            crypted_line = str(GOST_28147_89(line_to_encrypt, key, "e", "i"))
             write_file.write((crypted_line) + '\n')
 
 
@@ -82,7 +90,7 @@ def decrypt_file(encrypted_file_name, decrypted_file_name, key):
         for line in lines:
             line_to_decrypt = int(line.removesuffix('\n'))
             # print("line", key)
-            decrypted_line = (GOST_28147_89(line_to_decrypt, key, "d"))
+            decrypted_line = (GOST_28147_89(line_to_decrypt, key, "d", "i"))
             print("decrypt final", len(str(bin(int(decrypted_line)))), bin(int(decrypted_line)))
 
             decrypted_line = intToHex(decrypted_line)
