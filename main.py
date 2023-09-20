@@ -29,15 +29,23 @@ def GOST_28147_89_GUM(text, key, keys, mode):
 
 def GOST_28147_89(text_int, key, mode):
     temp = 0
+    print(((bin(text_int))))
+
     if len(hex(text_int)[2:]) % 16 > 0:
         temp = 1
 
     text_int = [(text_int >> (64 * i)) & 0xFFFFFFFFFFFFFFFF for i in range(len(hex(text_int)) // 16 + temp)]
     if temp == 1:
+
         text_int[len(text_int) - 1] = text_int[len(text_int) - 1] << (64 - len(hex(text_int[len(text_int) - 1]) * 4))
+    if mode =="d":
+        if text_int[-1] == 0:
+            text_int = text_int[0:-2]
+            print(text_int)
+    for i in range(len(text_int)):
+        print("la",  len(bin(text_int[i])), "temp", temp, bin(text_int[i]),mode)
 
     keys = gen_key(key, mode)
-    # subkeys = genSubKey(keys, mode)
 
     final_result = []
     for i in range(len(text_int)):
@@ -56,10 +64,10 @@ def GOST_28147_89(text_int, key, mode):
 
 
 def encrypt_file(file_name, encrypted_file_name, key):
-    with open(file_name, "r") as read_file:
+    with open(file_name, "r", encoding='utf-8') as read_file:
         lines = read_file.readlines()
 
-    with open(encrypted_file_name, 'w') as write_file:
+    with open(encrypted_file_name, 'w', encoding='utf-8') as write_file:
         for line in lines:
             line_to_encrypt = int(utf8ToHexBytes(line), 16)
             crypted_line = str(GOST_28147_89(line_to_encrypt, key, "e"))
@@ -67,15 +75,18 @@ def encrypt_file(file_name, encrypted_file_name, key):
 
 
 def decrypt_file(encrypted_file_name, decrypted_file_name, key):
-    with open(encrypted_file_name, "r") as read_file:
+    with open(encrypted_file_name, "r",encoding='utf-8') as read_file:
         lines = read_file.readlines()
 
-    with open(decrypted_file_name, "w") as write_file:
+    with open(decrypted_file_name, "w",encoding='utf-8') as write_file:
         for line in lines:
             line_to_decrypt = int(line.removesuffix('\n'))
-            print("line", key)
+            # print("line", key)
             decrypted_line = (GOST_28147_89(line_to_decrypt, key, "d"))
+            print("decrypt final", len(str(bin(int(decrypted_line)))), bin(int(decrypted_line)))
+
             decrypted_line = intToHex(decrypted_line)
+            # print("bin", str(bin(int(decrypted_line))))
             write_file.write(hexToUtf8(decrypted_line))
 
 

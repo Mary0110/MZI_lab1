@@ -24,16 +24,6 @@ def intToHex(int):
     return hex(int)[2:]
 
 
-def file_read(path):
-    with open(path, "r") as f:
-        text = f.read()
-    return text
-
-
-def file_write(path, text):
-    with open(path, "w") as f:
-        print(text, file=f)
-
 
 def gen_key(key,type):
 
